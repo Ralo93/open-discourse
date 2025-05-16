@@ -1,30 +1,29 @@
-beautifulsoup4==4.11.1
-black==22.3.0
-bs4==0.0.1
-certifi==2022.12.7
-charset-normalizer==2.0.12
-click==8.1.3
-dicttoxml==1.7.4
-flake8==4.0.1
-greenlet==1.1.2
-idna==3.3
-levenshtein==0.25.1
-mccabe==0.6.1
-mypy-extensions==0.4.3
-numpy==1.22.3
-pandas==1.4.2
-pathspec==0.9.0
-platformdirs==2.5.2
-psycopg2-binary==2.9.3
-pycodestyle==2.8.0
-pyflakes==2.4.0
-python-dateutil==2.8.2
-pytz==2022.1
-regex==2022.4.24
-requests==2.27.1
-six==1.16.0
-soupsieve==2.3.2.post1
-SQLAlchemy==1.4.36
-tomli==2.0.1
-typing_extensions==4.2.0
-urllib3==1.26.9
+beautifulsoup4==4.12.3          # Latest stable (fixes old bugs, improves parser support)
+black==24.3.0                   # Modern formatter with pyproject.toml support
+certifi==2024.2.2              # Updated CA bundle
+charset-normalizer==3.3.2      # Replaces chardet; better Unicode support
+click==8.1.7                   # CLI framework with async support
+dicttoxml==1.7.16              # No breaking changes, just newer
+flake8==7.0.0                  # Linting support for newer Python versions
+greenlet==3.0.3                # Required by SQLAlchemy
+idna==3.6                      # IDNA handling, no breaking updates
+levenshtein==0.25.1            # Latest already, unless you want to switch to `rapidfuzz`
+mccabe==0.7.0                  # Flake8 dependency
+mypy-extensions==1.0.0         # For use with mypy and type hints
+numpy==1.26.4                  # Critical for pandas + numerical ops
+pandas==2.2.2                  # Fully Python 3.13-compatible
+pathspec==0.12.1               # Used by black
+platformdirs==4.2.0            # For cross-platform config management
+psycopg2-binary==2.9.9         # Latest PostgreSQL client
+pycodestyle==2.11.1            # For flake8
+pyflakes==3.2.0                # For flake8
+python-dateutil==2.9.0.post0   # Used with pandas
+pytz==2024.1                   # For timezone-aware datetime handling
+regex==2024.4.16               # Better than built-in `re` for Unicode/complex matching
+requests==2.31.0               # Stable HTTP client
+six==1.16.0                    # Still maintained, required by some libs
+soupsieve==2.5                 # Required by bs4
+SQLAlchemy==2.0.30             # Major upgrade (PEP 484 typing, async support)
+tomli==2.0.1                   # Fine if still parsing pyproject.toml
+typing_extensions==4.11.0      # Useful for backporting type hints
+urllib3==2.2.1                 # Critical for requests; major performance improvements

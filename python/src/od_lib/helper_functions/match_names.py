@@ -1,7 +1,18 @@
 import pandas as pd
 import numpy as np
 import regex
-import Levenshtein
+
+# Replace Levenshtein with python-Levenshtein or use the distance functions from rapidfuzz
+try:
+    from Levenshtein import ratio as levenshtein_ratio
+except ImportError:
+    try:
+        from rapidfuzz.distance import Levenshtein
+        def levenshtein_ratio(s1, s2):
+            return Levenshtein.normalized_similarity(s1, s2)
+    except ImportError:
+        raise ImportError("Please install either 'python-Levenshtein' or 'rapidfuzz' package")
+
 
 # Note: This matching script is a total mess, I know. But it works quite fine and has
 # some optimization logic already included. Would still be nice to clean this up
