@@ -10,17 +10,19 @@ def main():
     DATA_DIR = ROOT_DIR / "data"
 
     # Define subdirectories - using more accessible paths
-    RAW_DIR = DATA_DIR / "raw"
+    #RAW_DIR = DATA_DIR / "raw"
     CACHE_DIR = DATA_DIR / "cache"
     FINAL_DIR = DATA_DIR / "final"
 
-    MP_BASE_DATA_DIR = RAW_DIR / "MP_BASE_DATA"
+    MP_BASE_DATA_DIR = DATA_DIR / "MP_BASE_DATA"
+    OUTPUT_DIR = DATA_DIR / "processed"
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     POLITICIANS_DIR = CACHE_DIR / "politicians"
     POLITICIANS_STAGE_01 = POLITICIANS_DIR / "stage_01"
     ELECTORAL_TERMS_DIR = FINAL_DIR
 
     # Create directories if they don't exist
-    for directory in [DATA_DIR, RAW_DIR, CACHE_DIR, FINAL_DIR,
+    for directory in [DATA_DIR, CACHE_DIR, FINAL_DIR,
                      MP_BASE_DATA_DIR, POLITICIANS_DIR, POLITICIANS_STAGE_01,
                      ELECTORAL_TERMS_DIR]:
         directory.mkdir(parents=True, exist_ok=True)

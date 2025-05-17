@@ -4,118 +4,149 @@ from pathlib import Path
 import dicttoxml
 import sys
 
-# Set default encoding to utf-8 for all file operations
-sys.stdout.reconfigure(encoding='utf-8')
+# Set default encoding
+sys.stdout.reconfigure(encoding="utf-8")
 
-# Define standard directories
+# Define directories
 DATA_DIR = Path("./data")
 RAW_XML_DIR = DATA_DIR / "raw_xml"
 RAW_TXT_DIR = DATA_DIR / "raw_txt"
 RAW_TXT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Get the election term directory (only processing the first one)
-term_folders = list(RAW_XML_DIR.glob("electoral_term_*"))
-if not term_folders:
-    print("No electoral term folders found. Make sure to run download_data.py first.")
-    exit(1)
-
-term_folder = term_folders[0]
-term_number = int(re.search(r"(?<=electoral_term_)\d{2}", term_folder.stem).group(0))
-
-print(f"Parsing term {term_number}...")
-
-# Common regex patterns for session begin and end
-begin_pattern = re.compile(r"Beginn?:?\s?(\d){1,2}(\s?[.,]\s?(\d){1,2})?\s?Uhr")
-end_pattern = re.compile(r"\(Schlu(ß|ss)\s?:?(.*?)\d{1,2}\D+(\d{1,2})?(.*?)\)?|\(Ende der Sitzung: \d{1,2}\D+(\d{1,2}) Uhr\.?\)")
-
-# Function to replace problem characters
 def clean_text(text):
+    """Clean text by handling various character encodings."""
     if text is None:
         return ""
-
-    # Replace problematic characters with similar ASCII characters or descriptive replacements
+    # Handle various special characters and encodings
     replacements = {
-        '\u011f': 'g',  # ğ -> g
-        '\uf020': ' ',  # private use character -> space
-        # Add more replacements as needed
+        '\u011f': 'g',
+        '\uf020': ' ',
+        'Ã¤': 'ä',
+        'Ã¼': 'ü',
+        'Ã¶': 'ö',
+        'Ã„': 'Ä',
+        'Ãœ': 'Ü',
+        'Ã–': 'Ö',
+        'ÃŸ': 'ß'
     }
-
     for char, replacement in replacements.items():
         text = text.replace(char, replacement)
+    return text
+
+def extract_text_from_element(element):
+    """Recursively extract all text content from an element and its children."""
+    if element is None:
+        return ""
+
+    text = element.text or ""
+    for child in element:
+        text += extract_text_from_element(child)
+        if child.tail:
+            text += child.tail
 
     return text
 
-# Process each XML file in the directory
-for xml_file_path in term_folder.glob("*.xml"):
+def process_xml_file(xml_file_path):
+    """Process a single XML file and extract its contents."""
+    print(f"Processing {xml_file_path.name}")
+
     try:
-        print(f"Processing {xml_file_path.name}")
+        # Parse the XML file
         tree = et.parse(xml_file_path)
+        root = tree.getroot()
 
         # Extract metadata
         meta_data = {
-            "document_number": tree.find("NR").text,
-            "date": tree.find("DATUM").text
+            "document_number": "",
+            "date": ""
         }
 
-        # Get text content and clean it
-        text_corpus = tree.find("TEXT").text
-        if text_corpus is None:
-            print(f"  Skipping - no text content found")
-            continue
+        # Extract document number and date from plenarprotokoll-nummer or wahlperiode/sitzungsnr
+        plenarprotokoll_nummer = root.find(".//plenarprotokoll-nummer")
+        if plenarprotokoll_nummer is not None:
+            meta_data["document_number"] = extract_text_from_element(plenarprotokoll_nummer).strip()
 
-        # Clean problematic characters before further processing
-        text_corpus = clean_text(text_corpus)
-        text_corpus = text_corpus.replace("\r", "")
+        # Try to get wahlperiode and sitzungsnr
+        wahlperiode = root.find(".//wahlperiode")
+        sitzungsnr = root.find(".//sitzungsnr")
+        if wahlperiode is not None and sitzungsnr is not None:
+            if not meta_data["document_number"]:
+                meta_data["document_number"] = f"{wahlperiode.text}/{sitzungsnr.text}"
 
-        # Find beginning of session
-        find_beginnings = list(re.finditer(begin_pattern, text_corpus))
-        if len(find_beginnings) != 1:
-            print(f"  Skipping - couldn't identify unique session beginning (found {len(find_beginnings)})")
-            continue
+        # Get the date
+        datum = root.find(".//datum")
+        if datum is not None:
+            meta_data["date"] = datum.text if datum.text else (datum.get("date") or "")
 
-        beginning_of_session = find_beginnings[0].span()[1]
+        # Initialize sections with empty strings
+        toc = ""
+        session_content = ""
+        appendix = ""
 
-        # Split into TOC and session content
-        toc = text_corpus[:beginning_of_session]
-        session_content = text_corpus[beginning_of_session:]
+        # Extract table of contents (vorspann section)
+        vorspann = root.find(".//vorspann")
+        if vorspann is not None:
+            toc = extract_text_from_element(vorspann).strip()
 
-        # Add end marker to help with regex
-        session_content += "\n\nEND OF FILE"
+        # Extract session content (sitzungsverlauf section)
+        sitzungsverlauf = root.find(".//sitzungsverlauf")
+        if sitzungsverlauf is not None:
+            session_content = extract_text_from_element(sitzungsverlauf).strip()
 
-        # Find end of session
-        find_endings = list(re.finditer(end_pattern, session_content))
-        if len(find_endings) != 1:
-            print(f"  Skipping - couldn't identify unique session ending (found {len(find_endings)})")
-            continue
+        # Extract appendix (anlagen section)
+        anlagen = root.find(".//anlagen")
+        if anlagen is not None:
+            appendix = extract_text_from_element(anlagen).strip()
 
-        end_of_session = find_endings[0].span()[0]
+        # If there's no clear structure, try to extract content from rede elements
+        if not session_content:
+            speeches = []
+            for rede in root.findall(".//rede"):
+                speech_text = extract_text_from_element(rede).strip()
+                if speech_text:
+                    speeches.append(speech_text)
 
-        # Split content and appendix
-        appendix = session_content[end_of_session:]
-        session_content = session_content[:end_of_session]
+            if speeches:
+                session_content = "\n\n".join(speeches)
 
-        # Save the processed files
-        save_path = RAW_TXT_DIR / term_folder.stem / xml_file_path.stem
+        # If still no content, use the entire document as session content
+        if not session_content:
+            session_content = extract_text_from_element(root).strip()
+            if toc:
+                session_content = session_content.replace(toc, "", 1).strip()
+            if appendix:
+                session_content = session_content.replace(appendix, "", 1).strip()
+
+        # Clean the text
+        toc = clean_text(toc.replace("\r", ""))
+        session_content = clean_text(session_content.replace("\r", ""))
+        appendix = clean_text(appendix.replace("\r", ""))
+
+        # Save results
+        save_path = RAW_TXT_DIR / xml_file_path.stem
         save_path.mkdir(parents=True, exist_ok=True)
 
-        # Use utf-8 encoding explicitly when writing files
-        with open(save_path / "toc.txt", "w", encoding="utf-8") as text_file:
-            text_file.write(toc)
+        (save_path / "toc.txt").write_text(toc, encoding="utf-8")
+        (save_path / "session_content.txt").write_text(session_content, encoding="utf-8")
+        (save_path / "appendix.txt").write_text(appendix, encoding="utf-8")
+        (save_path / "meta_data.xml").write_bytes(dicttoxml.dicttoxml(meta_data))
 
-        with open(save_path / "session_content.txt", "w", encoding="utf-8") as text_file:
-            text_file.write(session_content)
-
-        with open(save_path / "appendix.txt", "w", encoding="utf-8") as text_file:
-            text_file.write(appendix)
-
-        # For the XML file, we use bytes mode which doesn't have encoding issues
-        with open(save_path / "meta_data.xml", "wb") as result_file:
-            result_file.write(dicttoxml.dicttoxml(meta_data))
-
-        print(f"  Success - saved to {save_path}")
+        print(f"  ✅ Saved parsed output to {save_path}")
+        return True
 
     except Exception as e:
-        print(f"  Error processing {xml_file_path.name}: {e}")
-        # Uncomment for debugging
-        # import traceback
-        # traceback.print_exc()
+        print(f"  ❌ Error processing {xml_file_path.name}: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+# Process each XML file
+successful = 0
+failed = 0
+for xml_file_path in RAW_XML_DIR.glob("*.xml"):
+    if process_xml_file(xml_file_path):
+        successful += 1
+    else:
+        failed += 1
+
+print(f"\nProcessing complete. Successfully processed {successful} files, {failed} failed.")

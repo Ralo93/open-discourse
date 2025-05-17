@@ -13,12 +13,30 @@ def main():
 
     # Define scripts to run
     scripts = [
-       # "process_mp_data.py",          # Process MP data from XML
-       # "create_factions.py",          # Create factions list
-       # "add_abbreviations_and_ids.py", # Add abbreviations to factions
-       # "add_faction_ids.py",          # Add faction IDs to MPs
-        "scrape_government_members.py", # Scrape government members from Wikipedia
-        "merge_government_members.py"   # Merge government members with MPs
+
+       # "download_data.py",
+      # "process_xml.py"
+       # "process_mp_data.py"          # Process MP data from XML
+       #"scrape_government_members.py", # Scrape government members from Wikipedia
+
+      #  "create_factions.py",          # Create factions list
+      #  "add_abbreviations_and_ids.py", # Add abbreviations to factions
+      #  "add_faction_ids.py",          # Add faction IDs to MPs
+      #  "merge_government_members.py",   # Merge government members with MPs
+
+        # Speech processing
+       # "extract_speeches.py"          # Extract speeches from raw text WORKS i think but is buggy
+        "clean_speeches.py"            # Clean and process speeches WORKS now, but needs a little more adjustment still. Some B90/Grünen geht nicht und CDU/CSU aiuch nicht
+        #"match_speeches.py"             # Match speeches to politicians
+
+        # Contributions processing
+       #"extract_contributions.py",
+       #"clean_contributions.py",
+       #"match_contributions.py",
+
+        #"finalize_data.py"
+        #"export_to_sql.py"
+
     ]
 
     # Run each script in sequence
